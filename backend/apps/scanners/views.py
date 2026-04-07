@@ -19,7 +19,7 @@ from .serializers import (
     SystemTaskSerializer,
     ScannerSettingsSerializer
 )
-from .services import ScannerService, ScannerControlService
+from .services import ScannerService
 
 
 class StandardResultsSetPagination(PageNumberPagination):
@@ -259,24 +259,6 @@ def run_single_scan(request):
         return Response({'error': f'Failed to trigger scan: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def scan_history(request):
-    """Get recent scan history."""
-    try:
-        history_data = ScannerControlService.get_scan_history()
-        return Response(history_data)
-        
-    except PermissionError as e:
-        return Response(
-            {'error': str(e)}, 
-            status=status.HTTP_403_FORBIDDEN
-        )
-    except Exception as e:
-        return Response(
-            {'error': f'Failed to read scan history: {str(e)}'}, 
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
 
 
 @api_view(['GET'])
@@ -458,106 +440,6 @@ def scan_batch_listings(request, scan_id):
         )
 
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def run_detailed_analysis(request, scan_id):
-    """
-    Run detailed AI analysis on a specific scan batch.
-    
-    This endpoint runs Pass 2 (deep analysis) on all listings in the batch
-    that were marked as interesting during triage (Pass 1).
-    
-    Uses the new AI agent-based TwoPassAnalysisService.
-    """
-    import asyncio
-    from .services.two_pass_analysis_service import TwoPassAnalysisService
-    from apps.listings.models import Listing
-    
-    try:
-        # Verify scan batch exists
-        batch = ScanBatch.objects.get(scan_id=scan_id)
-        
-        # Check if analysis is already in progress (with stuck detection)
-        if batch.analysis_status == 'in_progress':
-            if batch.analysis_started_at:
-                from datetime import datetime, timedelta
-                # Check if it's been running for more than 30 minutes (likely stuck)
-                stuck_threshold = datetime.now() - timedelta(minutes=30)
-                if batch.analysis_started_at < stuck_threshold:
-                    # Auto-reset stuck analysis
-                    batch.analysis_status = 'pending'
-                    batch.analysis_started_at = None
-                    batch.analysis_completed_at = None
-                    batch.save()
-                else:
-                    return Response(
-                        {'error': f'Analysis already in progress (started {batch.analysis_started_at}). Use reset if stuck.'}, 
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-            else:
-                return Response(
-                    {'error': 'Analysis already in progress for this scan batch'}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        
-        # Get listings marked as interesting by triage
-        interesting_listings = list(Listing.objects.filter(
-            scan_identifier=scan_id,
-            triage_interesting=True,
-            investigation_completed=False
-        ))
-        
-        if not interesting_listings:
-            return Response({
-                'success': True,
-                'message': 'No listings marked for investigation in this batch',
-                'stats': {
-                    'total_listings': 0,
-                    'analyzed': 0,
-                    'notifications': 0
-                }
-            })
-        
-        # Get listing IDs for the analysis service
-        listing_ids = [l.listing_idx for l in interesting_listings]
-        
-        # Run AI deep analysis using TwoPassAnalysisService
-        analysis_service = TwoPassAnalysisService()
-        result = asyncio.run(
-            analysis_service.analyze_selected_listings(
-                listing_ids=listing_ids,
-                scan_batch=batch
-            )
-        )
-        
-        if result.get('success'):
-            return Response({
-                'success': True,
-                'message': f"Analyzed {result.get('analyzed', 0)} listings",
-                'stats': {
-                    'analyzed': result.get('analyzed', 0),
-                    'notifications': result.get('notifications', 0),
-                    'results': result.get('results', [])
-                }
-            })
-        else:
-            return Response(
-                {'error': result.get('error', 'Unknown error')}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-            
-    except ScanBatch.DoesNotExist:
-        return Response(
-            {'error': 'Scan batch not found'}, 
-            status=status.HTTP_404_NOT_FOUND
-        )
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return Response(
-            {'error': f'Analysis error: {str(e)}'}, 
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
 
 
 @api_view(['POST'])
@@ -793,32 +675,28 @@ def scanner_agent_info(request, pk):
     Returns agent type, enabled status, and capabilities.
     """
     try:
-        from .services.agents import get_agent
-        
         scanner = ActiveScanner.objects.get(id=pk)
-        
+
         # Resolve agent slug (prefer FK, fall back to agent_type)
         agent_slug = scanner.agent.slug if scanner.agent_id else scanner.agent_type
-        
-        # Get agent info
+
         agent_info = {
             'scanner_id': scanner.id,
             'scanner_name': f"{scanner.query} in {scanner.locations.first().name if scanner.locations.exists() else 'unknown'}",
             'agent_type': agent_slug,
         }
-        
-        # Try to instantiate the agent to check if it's enabled
+
+        # Read agent info directly from DB
         try:
-            agent = get_agent(agent_slug)
-            agent_info['enabled'] = agent.enabled
-            agent_info['triage_model'] = agent.triage_model
-            agent_info['analysis_model'] = agent.analysis_model
+            agent_record = Agent.objects.get(slug=agent_slug)
+            agent_info['enabled'] = agent_record.enabled
+            agent_info['triage_model'] = agent_record.triage_model
+            agent_info['analysis_model'] = agent_record.analysis_model
             agent_info['status'] = 'active'
-        except NotImplementedError as e:
+        except Agent.DoesNotExist:
             agent_info['enabled'] = False
-            agent_info['status'] = 'stub'
-            agent_info['message'] = str(e)
-        
+            agent_info['status'] = 'not_found'
+
         return Response(agent_info)
         
     except ActiveScanner.DoesNotExist:
@@ -882,253 +760,8 @@ def toggle_investigation_status(request):
         )
 
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def run_deep_analysis(request):
-    """
-    Run deep Pass 2 analysis on manually selected listings.
-    
-    Body:
-        {
-            "listing_ids": [1, 2, 3],
-            "scan_batch_id": "optional_scan_id"
-        }
-    """
-    import asyncio
-    from apps.listings.models import Listing
-    from .services.two_pass_analysis_service import TwoPassAnalysisService
-    from apps.shared.services.notification_service import NotificationService
-    
-    listing_ids = request.data.get('listing_ids', [])
-    scan_batch_id = request.data.get('scan_batch_id')
-    
-    if not listing_ids:
-        return Response(
-            {'error': 'listing_ids is required'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    
-    try:
-        # Check if system is busy
-        if SystemTask.is_busy():
-            return Response(
-                {'error': 'System is busy with another task'},
-                status=status.HTTP_409_CONFLICT
-            )
-        
-        # Get scan batch if provided
-        scan_batch = None
-        if scan_batch_id:
-            try:
-                scan_batch = ScanBatch.objects.get(scan_id=scan_batch_id)
-            except ScanBatch.DoesNotExist:
-                pass
-        
-        # Create task for tracking
-        task = SystemTask.objects.create(
-            task_type='analysis',
-            status='running',
-            current_step='analyzing',
-            progress_percent=10,
-            progress_message=f'Analyzing {len(listing_ids)} listings...',
-            scan_batch=scan_batch
-        )
-        
-        try:
-            # Run deep analysis
-            service = TwoPassAnalysisService()
-            
-            # Run async function
-            result = asyncio.run(service.analyze_selected_listings(
-                listing_ids=listing_ids,
-                scan_batch=scan_batch
-            ))
-            
-            if result['success']:
-                task.update_progress('notifying', 90, f"Sending notifications...")
-                
-                # Send email notifications for NOTIFY recommendations
-                notify_count = result.get('notifications', 0)
-                emails_sent = False
-                
-                if notify_count > 0:
-                    try:
-                        # Get analyzed listings with NOTIFY recommendation
-                        # Note: investigation_result stores 'notify', 'ignore', 'pending'
-                        notify_listings = Listing.objects.filter(
-                            listing_idx__in=listing_ids,
-                            investigation_result__iexact='notify'
-                        )
-                        
-                        # Get scanner objects for these listings
-                        scanner_ids = set(l.scanner_id for l in notify_listings if l.scanner_id)
-                        scanners_map = {}
-                        if scanner_ids:
-                            from .models import ActiveScanner
-                            scanners = ActiveScanner.objects.filter(id__in=scanner_ids)
-                            scanners_map = {s.id: s for s in scanners}
-                        
-                        # Group by scanner for per-scanner email lists
-                        scanner_notifications = {}
-                        for listing in notify_listings:
-                            scanner_id = listing.scanner_id or 'default'
-                            scanner = scanners_map.get(scanner_id)
-                            
-                            if scanner_id not in scanner_notifications:
-                                scanner_notifications[scanner_id] = {
-                                    'scanner': scanner,
-                                    'listings': []
-                                }
-                            
-                            # Build notification item from analysis_metadata
-                            analysis = listing.analysis_metadata or {}
-                            
-                            # Get image - prefer img field, fallback to additional_images
-                            img_url = listing.img
-                            if not img_url and listing.additional_images:
-                                img_url = listing.additional_images[0] if listing.additional_images else None
-                            
-                            # Extract confidence and summary from analysis_metadata
-                            confidence = analysis.get('confidence', listing.triage_confidence or 0)
-                            summary = analysis.get('summary', listing.triage_reason or 'Deal found!')
-                            
-                            scanner_notifications[scanner_id]['listings'].append({
-                                'title': listing.title,
-                                'price': listing.price,
-                                'location': listing.location,
-                                'url': listing.url,
-                                'img': img_url,
-                                'confidence': confidence,
-                                'summary': summary,
-                                'scanner': scanner.query if scanner else 'Unknown',
-                                'analysis': analysis
-                            })
-                        
-                        # Send notifications grouped by scanner
-                        notification_service = NotificationService()
-                        for scanner_id, data in scanner_notifications.items():
-                            scanner = data['scanner']
-                            listings_data = data['listings']
-                            
-                            # Get scanner's email list (or use default)
-                            scanner_emails = None
-                            if scanner and hasattr(scanner, 'notification_emails') and scanner.notification_emails:
-                                scanner_emails = scanner.notification_emails
-                            
-                            if listings_data:
-                                notification_service.notify_deep_analysis_results(
-                                    notify_items=listings_data,
-                                    recipient_emails=scanner_emails
-                                )
-                        
-                        emails_sent = True
-                        print(f"✓ Sent email notifications for {len(list(notify_listings))} NOTIFY listings")
-                        
-                    except Exception as e:
-                        print(f"⚠️ Failed to send notifications: {e}")
-                        import traceback
-                        traceback.print_exc()
-                        # Don't fail the whole request if notifications fail
-                
-                task.update_progress('complete', 100, f"{result['analyzed']} analyzed, {notify_count} notify" + (" (emails sent)" if emails_sent else ""))
-                task.complete(success=True)
-                
-                return Response({
-                    'success': True,
-                    'analyzed': result['analyzed'],
-                    'notifications': result['notifications'],
-                    'emails_sent': emails_sent,
-                    'results': result.get('results', []),
-                    'message': f"Analyzed {result['analyzed']} listings" + (f", sent {notify_count} notifications" if emails_sent else "")
-                })
-            else:
-                task.fail(result.get('error', 'Analysis failed'))
-                return Response(
-                    {'error': result.get('error', 'Analysis failed')},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
-        except Exception as e:
-            task.fail(str(e))
-            raise
-        
-    except Exception as e:
-        return Response(
-            {'error': f'Failed to run deep analysis: {str(e)}'},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
 
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def rerun_triage(request, scan_id):
-    """
-    Re-run AI triage on all listings from a scan batch.
-    Useful for testing prompt changes or re-evaluating listings.
-    
-    URL: /api/scan-batches/{scan_id}/rerun-triage/
-    """
-    import asyncio
-    from .services.two_pass_analysis_service import TwoPassAnalysisService
-    
-    try:
-        # Get the scan batch
-        try:
-            scan_batch = ScanBatch.objects.get(scan_id=scan_id)
-        except ScanBatch.DoesNotExist:
-            return Response(
-                {'error': 'Scan batch not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
-        # Check if system is busy
-        if SystemTask.is_busy():
-            return Response(
-                {'error': 'System is busy with another task'},
-                status=status.HTTP_409_CONFLICT
-            )
-        
-        # Create task for tracking
-        task = SystemTask.objects.create(
-            task_type='analysis',
-            status='running',
-            current_step='triaging',
-            progress_percent=10,
-            progress_message='Re-running AI triage...',
-            scan_batch=scan_batch
-        )
-        
-        try:
-            # Run triage
-            service = TwoPassAnalysisService()
-            result = asyncio.run(service.rerun_triage(scan_batch))
-            
-            if result['success']:
-                task.update_progress('complete', 100, f"{result['stats'].get('triaged_interesting', 0)} marked interesting")
-                task.complete(success=True)
-                
-                return Response({
-                    'success': True,
-                    'total_listings': result['stats'].get('total_listings', 0),
-                    'triaged_interesting': result['stats'].get('triaged_interesting', 0),
-                    'message': result.get('message', 'Triage re-run complete')
-                })
-            else:
-                task.fail(result.get('error', 'Triage failed'))
-                return Response(
-                    {'error': result.get('error', 'Triage re-run failed')},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
-        except Exception as e:
-            task.fail(str(e))
-            raise
-        
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return Response(
-            {'error': f'Failed to re-run triage: {str(e)}'},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
 
 
 @api_view(['POST'])
@@ -1421,11 +1054,6 @@ def set_scanner_mode(request):
             # Disable auto mode
             settings.auto_enabled = False
             settings.next_scan_at = None
-            # Stop the continuous scanner if running
-            try:
-                ScannerControlService.stop_scanner()
-            except:
-                pass
         
         settings.save()
         
@@ -1701,129 +1329,3 @@ def suggest_agent_queries(request, slug):
         )
 
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def analyze_listing_url(request, slug):
-    """
-    Scrape a single Facebook Marketplace listing by URL, run agent analysis,
-    save the listing, and return the result.
-    
-    URL: /api/agents/<slug>/analyze-url/
-    
-    Body:
-        { "url": "https://www.facebook.com/marketplace/item/123456/" }
-    
-    Returns:
-        {
-            "listing_id": 123,
-            "title": "...",
-            "price": "...",
-            "location": "...",
-            "description": "...",
-            "images": [...],
-            "analysis": { ... }
-        }
-    """
-    import re
-    from apps.listings.models import Listing
-    from .services.llm_analysis_service import LLMAnalysisService
-    from .services.agents import get_agent
-    
-    url = request.data.get('url', '').strip()
-    
-    # Validate URL
-    if not url:
-        return Response(
-            {'error': 'URL is required'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    
-    if not re.search(r'facebook\.com/marketplace/item/\d+', url):
-        return Response(
-            {'error': 'URL must be a Facebook Marketplace listing (facebook.com/marketplace/item/...)'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    
-    # Verify agent exists
-    try:
-        agent_record = Agent.objects.get(slug=slug, enabled=True)
-    except Agent.DoesNotExist:
-        return Response(
-            {'error': f'Agent "{slug}" not found or disabled'},
-            status=status.HTTP_404_NOT_FOUND
-        )
-    
-    try:
-        # Step 1: Scrape the listing
-        llm_service = LLMAnalysisService()
-        details = llm_service._extract_full_details(url)
-        
-        if details['status'] != 'success':
-            return Response(
-                {'error': f'Failed to scrape listing: {details.get("error", details["status"])}'},
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY
-            )
-        
-        title = details.get('title', '') or 'Untitled Listing'
-        price = details.get('price', '') or 'No price'
-        location = details.get('location', '') or 'Unknown'
-        description = details.get('description', '')
-        image_urls = details.get('images', [])
-        image_bytes = details.get('image_bytes', [])
-        
-        # Step 2: Save listing to database
-        listing = Listing.objects.create(
-            title=title,
-            price=price,
-            location=location,
-            url=url,
-            description=description,
-            full_description=description,
-            img=image_urls[0] if image_urls else '',
-            additional_images=image_urls,
-            query='manual-url-analysis',
-            search_title='Manual URL Analysis',
-            scan_identifier='manual-url-analysis',
-            scanner_id=None,
-            search_location=location,
-            needs_investigation=True,
-            investigation_completed=False,
-            watchlist=False,
-        )
-        
-        # Step 3: Run agent analysis
-        agent = get_agent(slug)
-        listing_data = {
-            'title': title,
-            'price': price,
-            'location': location,
-            'url': url,
-            'description': description,
-        }
-        
-        analysis = agent.analyze(listing_data=listing_data, images=image_bytes)
-        
-        # Step 4: Save analysis result on the listing
-        listing.analysis_metadata = analysis
-        listing.investigation_completed = True
-        recommendation = analysis.get('recommendation', 'IGNORE')
-        listing.investigation_result = recommendation.lower()
-        listing.save(update_fields=['analysis_metadata', 'investigation_completed', 'investigation_result'])
-        
-        return Response({
-            'listing_id': listing.listing_idx,
-            'title': title,
-            'price': price,
-            'location': location,
-            'description': description[:500] if description else '',
-            'images': image_urls,
-            'analysis': analysis,
-        })
-        
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return Response(
-            {'error': f'Analysis failed: {str(e)}'},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )

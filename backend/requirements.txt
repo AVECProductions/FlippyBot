@@ -27,20 +27,10 @@ pytz==2023.3
 whitenoise==6.6.0  # For serving static files
 dj-database-url==2.1.0  # For database URL configuration
 
-#recipe srapers
-recipe-scrapers==15.4.0
-
-# New packages
-openai>=1.0.0
 requests>=2.31.0
-beautifulsoup4>=4.12.0
 
-# Scanner dependencies
-psutil>=5.9.0  # For process monitoring
-playwright>=1.40.0  # For web scraping
+# Notifications
 sendgrid>=6.10.0  # For email notifications
-twilio>=8.2.0  # For SMS notifications (optional)
-geopy>=2.3.0  # For distance calculations
-# AI/LLM dependencies
-httpx>=0.24.0  # Async HTTP client for image fetching
-google-genai>=0.2.0  # Google Gemini API (new package)
+
+# AI/LLM dependencies (agent builder runs on Railway)
+google-genai>=0.2.0  # Google Gemini API

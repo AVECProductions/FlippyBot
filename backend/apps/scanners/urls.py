@@ -16,7 +16,6 @@ urlpatterns = [
     path('agents/generate-prompt/', views.generate_agent_prompt, name='generate-agent-prompt'),
     path('agents/refine-prompt/', views.refine_agent_prompt, name='refine-agent-prompt'),
     path('agents/<slug:slug>/suggest-queries/', views.suggest_agent_queries, name='suggest-agent-queries'),
-    path('agents/<slug:slug>/analyze-url/', views.analyze_listing_url, name='analyze-listing-url'),
     
     # Include router URLs
     path('', include(router.urls)),
@@ -26,13 +25,11 @@ urlpatterns = [
     path('scanner/stop/', views.stop_scanner, name='stop-scanner'),
     path('scanner/status/', views.scanner_status, name='scanner-status'),
     path('scanner/single-run/', views.run_single_scan, name='single-scan'),
-    path('scanner/history/', views.scan_history, name='scan-history'),
     
     path('scan-batches-debug/', views.scan_batches_debug, name='scan-batches-debug'),
     path('scan-batches/', views.scan_batches_list, name='scan-batches-list'),
     path('scan-batches/<str:scan_id>/', views.scan_batch_detail, name='scan-batch-detail'),
     path('scan-batches/<str:scan_id>/listings/', views.scan_batch_listings, name='scan-batch-listings'),
-    path('scan-batches/<str:scan_id>/analyze/', views.run_detailed_analysis, name='run-detailed-analysis'),
     path('scan-batches/<str:scan_id>/reset-analysis/', views.reset_analysis_status, name='reset-analysis-status'),
     
     # AI Usage Tracking endpoints
@@ -42,8 +39,6 @@ urlpatterns = [
     
     # Manual analysis control endpoints
     path('listings/toggle-investigation/', views.toggle_investigation_status, name='toggle-investigation'),
-    path('listings/deep-analysis/', views.run_deep_analysis, name='run-deep-analysis'),
-    path('scan-batches/<str:scan_id>/rerun-triage/', views.rerun_triage, name='rerun-triage'),
     path('scan-batches/<str:scan_id>/send-notifications/', views.send_scan_notifications, name='send-scan-notifications'),
     
     # Task status endpoints (for global task indicator)
