@@ -122,7 +122,7 @@
             <span class="mr-2 text-lg">💰</span>
             Value Assessment
           </h4>
-          <div class="grid grid-cols-3 gap-4 mb-3">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
             <div class="text-center p-3 bg-gray-800 rounded-lg">
               <p class="text-gray-500 text-xs uppercase mb-1">Listed Price</p>
               <p class="text-xl font-bold text-white">{{ listing?.price }}</p>
@@ -255,14 +255,14 @@
     </div>
 
     <template #footer>
-      <div class="flex justify-between items-center w-full">
-        <!-- Left: Open Listing button -->
+      <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between sm:items-center w-full">
+        <!-- Open Listing button -->
         <a
           v-if="listing?.url"
           :href="listing.url"
           target="_blank"
           rel="noopener noreferrer"
-          class="inline-flex items-center px-3 py-1.5 rounded-lg text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 transition-colors"
+          class="inline-flex items-center justify-center px-3 py-2 rounded-lg text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 transition-colors"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 mr-1.5">
             <path fill-rule="evenodd" d="M4.25 5.5a.75.75 0 00-.75.75v8.5c0 .414.336.75.75.75h8.5a.75.75 0 00.75-.75v-4a.75.75 0 011.5 0v4A2.25 2.25 0 0112.75 17h-8.5A2.25 2.25 0 012 14.75v-8.5A2.25 2.25 0 014.25 4h5a.75.75 0 010 1.5h-5z" clip-rule="evenodd" />
@@ -270,14 +270,15 @@
           </svg>
           Open Listing
         </a>
-        <div v-else></div>
+        <div v-else class="hidden sm:block"></div>
 
-        <!-- Right: Action buttons -->
-        <div class="flex space-x-2">
+        <!-- Action buttons -->
+        <div class="flex flex-wrap gap-2 justify-end">
           <BaseButton
             v-if="!analysisResult && !isAnalyzing"
             @click="runAnalysis()"
             variant="primary"
+            class="flex-1 sm:flex-none"
           >
             🤖 Analyze with AI
           </BaseButton>
@@ -287,6 +288,7 @@
             variant="primary"
             :disabled="notificationSent || isSendingNotification"
             :loading="isSendingNotification"
+            class="flex-1 sm:flex-none"
           >
             {{ notificationSent ? '✓ Notification Sent' : '📧 Send Notification' }}
           </BaseButton>
@@ -294,12 +296,14 @@
             v-if="analysisResult"
             @click="retryAnalysis"
             variant="secondary"
+            class="flex-1 sm:flex-none"
           >
             🔄 Re-analyze
           </BaseButton>
           <BaseButton
             @click="$emit('close')"
             variant="secondary"
+            class="flex-1 sm:flex-none"
           >
             Close
           </BaseButton>

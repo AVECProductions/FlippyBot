@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getScanBatches } from '@/services/api'
+import { formatDateTimeMST } from '@/utils/datetime'
 
 const router = useRouter()
 
@@ -35,9 +36,7 @@ const viewBatch = (scanId: string) => {
   router.push({ name: 'scan-batch', params: { scanId } })
 }
 
-const formatDateTime = (iso: string) => {
-  try { return new Date(iso).toLocaleString() } catch { return iso }
-}
+const formatDateTime = formatDateTimeMST
 
 const statusDot = (status: string) => {
   switch (status) {

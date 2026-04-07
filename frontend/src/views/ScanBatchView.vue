@@ -1,10 +1,10 @@
 <template>
   <div class="max-w-7xl mx-auto">
     <!-- Header -->
-    <div class="flex justify-between items-center mb-6">
+    <div class="flex flex-wrap justify-between items-start gap-3 mb-6">
       <div>
-        <button 
-          @click="$router.go(-1)" 
+        <button
+          @click="$router.go(-1)"
           class="text-gray-400 hover:text-white mb-2 flex items-center text-sm"
         >
           <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -90,28 +90,32 @@
       <p class="text-gray-400 mt-3">Loading scan results...</p>
     </div>
 
-    <!-- Summary Stats -->
-    <div v-if="scanBatch" class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-      <div class="bg-[#121212] rounded-lg p-4 border border-gray-800">
-        <div class="text-2xl font-bold text-white">{{ scanBatch.new_listings_added }}</div>
-        <div class="text-sm text-gray-500">New Listings</div>
-      </div>
-      <div class="bg-[#121212] rounded-lg p-4 border border-gray-800">
-        <div class="text-2xl font-bold text-yellow-400">{{ totalCounts.interesting || 0 }}</div>
-        <div class="text-sm text-gray-500">Pass 1: Interesting</div>
-      </div>
-      <div class="bg-[#121212] rounded-lg p-4 border border-gray-800">
-        <div class="text-2xl font-bold text-gray-500">{{ totalCounts.skipped || 0 }}</div>
-        <div class="text-sm text-gray-500">Pass 1: Skipped</div>
-      </div>
-      <div class="bg-[#121212] rounded-lg p-4 border border-gray-800">
-        <div class="text-2xl font-bold text-green-400">{{ deepAnalyzedCount }}</div>
-        <div class="text-sm text-gray-500">Pass 2: Analyzed</div>
-      </div>
-      <div class="bg-[#121212] rounded-lg p-4 border border-gray-800">
-        <div class="text-2xl font-bold text-emerald-400">{{ notifyCount }}</div>
-        <div class="text-sm text-gray-500">Notify</div>
-      </div>
+    <!-- Summary Stats (compact inline row) -->
+    <div v-if="scanBatch" class="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-4 text-sm">
+      <span class="text-gray-400">
+        <span class="font-semibold text-white">{{ scanBatch.new_listings_added }}</span>
+        <span class="text-gray-600 ml-1">new</span>
+      </span>
+      <span class="text-gray-700 hidden sm:inline">·</span>
+      <span class="text-gray-400">
+        <span class="font-semibold text-yellow-400">{{ totalCounts.interesting || 0 }}</span>
+        <span class="text-gray-600 ml-1">interesting</span>
+      </span>
+      <span class="text-gray-700 hidden sm:inline">·</span>
+      <span class="text-gray-400">
+        <span class="font-semibold text-gray-500">{{ totalCounts.skipped || 0 }}</span>
+        <span class="text-gray-600 ml-1">skipped</span>
+      </span>
+      <span class="text-gray-700 hidden sm:inline">·</span>
+      <span class="text-gray-400">
+        <span class="font-semibold text-green-400">{{ deepAnalyzedCount }}</span>
+        <span class="text-gray-600 ml-1">analyzed</span>
+      </span>
+      <span class="text-gray-700 hidden sm:inline">·</span>
+      <span class="text-gray-400">
+        <span class="font-semibold text-emerald-400">{{ notifyCount }}</span>
+        <span class="text-gray-600 ml-1">notify</span>
+      </span>
     </div>
 
     <!-- Filters -->
@@ -586,14 +590,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import { 
-  getScanBatch, 
-  getScanBatchListings, 
+import {
+  getScanBatch,
+  getScanBatchListings,
   resetAnalysisStatus,
   runDeepAnalysis,
   rerunTriage as rerunTriageAPI,
   sendScanNotifications
 } from '@/services/api';
+import { formatDateTimeMST } from '@/utils/datetime';
 
 const route = useRoute();
 const scanId = route.params.scanId as string;
@@ -695,9 +700,7 @@ const showError = (msg: string) => {
   setTimeout(() => error.value = null, 5000);
 };
 
-const formatDateTime = (dateString: string) => {
-  return new Date(dateString).toLocaleString();
-};
+const formatDateTime = formatDateTimeMST;
 
 const loadScanBatch = async () => {
   try {

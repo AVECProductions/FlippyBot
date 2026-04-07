@@ -74,7 +74,7 @@ const titleId = computed(() => `modal-title-${Math.random().toString(36).substr(
 
 const modalClasses = computed(() => {
   const baseClasses = [
-    'relative bg-black rounded-lg shadow-lg border border-gray-800 max-h-[90vh] overflow-y-auto'
+    'relative bg-black rounded-lg shadow-lg border border-gray-800 max-h-[90vh] overflow-y-auto overflow-x-hidden'
   ]
 
   const sizeClasses = {

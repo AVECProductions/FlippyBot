@@ -798,6 +798,12 @@ export interface ScannerSettings {
   can_run_manual: boolean;
   can_enable_auto: boolean;
   time_until_next_scan: number | null;
+  // Schedule window
+  schedule_enabled: boolean;
+  schedule_start: string;   // "HH:MM:SS"
+  schedule_end: string;     // "HH:MM:SS"
+  schedule_timezone: string;
+  schedule_active: boolean; // computed: is current time inside the window?
 }
 
 /**
@@ -843,7 +849,7 @@ export const getScannerSettings = async (): Promise<ScannerSettings> => {
  * Update scanner settings
  */
 export const updateScannerSettings = async (
-  settings: Partial<Pick<ScannerSettings, 'interval_minutes' | 'randomize_order'>>
+  settings: Partial<Pick<ScannerSettings, 'interval_minutes' | 'randomize_order' | 'schedule_enabled' | 'schedule_start' | 'schedule_end' | 'schedule_timezone'>>
 ): Promise<ScannerSettings> => {
   try {
     const response = await apiClient.post('/settings/update/', settings);

@@ -1000,20 +1000,39 @@ def update_scanner_settings(request):
     
     URL: /api/scanners/settings/
     """
+    SCHEDULE_ADMIN = 'owenlheron'
+    SCHEDULE_FIELDS = {'schedule_enabled', 'schedule_start', 'schedule_end', 'schedule_timezone'}
+
     try:
+        # Only the schedule admin can modify schedule fields
+        if any(f in request.data for f in SCHEDULE_FIELDS):
+            if request.user.username != SCHEDULE_ADMIN:
+                return Response(
+                    {'error': 'Only owenlheron can modify the schedule window.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
         settings = ScannerSettings.get_settings()
-        
+
         # Update allowed fields
         if 'interval_minutes' in request.data:
             settings.interval_minutes = request.data['interval_minutes']
         if 'randomize_order' in request.data:
             settings.randomize_order = request.data['randomize_order']
-        
+        if 'schedule_enabled' in request.data:
+            settings.schedule_enabled = bool(request.data['schedule_enabled'])
+        if 'schedule_start' in request.data:
+            settings.schedule_start = request.data['schedule_start']
+        if 'schedule_end' in request.data:
+            settings.schedule_end = request.data['schedule_end']
+        if 'schedule_timezone' in request.data:
+            settings.schedule_timezone = request.data['schedule_timezone']
+
         settings.save()
-        
+
         serializer = ScannerSettingsSerializer(settings)
         return Response(serializer.data)
-            
+
     except Exception as e:
         return Response(
             {'error': f'Failed to update scanner settings: {str(e)}'},

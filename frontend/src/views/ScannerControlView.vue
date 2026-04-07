@@ -34,6 +34,7 @@
           <span v-if="workerStatus?.last_scan_at">
             Last scan: {{ formatDateTime(workerStatus.last_scan_at) }}
           </span>
+          <span class="text-gray-700 text-[10px] uppercase tracking-wide">All times MST</span>
           <span v-if="workerStatus?.auto_enabled && timeUntilNextScan !== null && !workerScanning" class="text-blue-400">
             Next scan in {{ formatCountdown(timeUntilNextScan) }}
           </span>
@@ -91,93 +92,8 @@
 
     <!-- Mode Selection -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-      
-      <!-- Manual Mode Card -->
-      <div
-        class="bg-[#121212] rounded-lg p-6 border-2 transition-all"
-        :class="[
-          settings?.mode === 'manual' ? 'border-green-500' : 'border-gray-800',
-          settings?.mode === 'manual' ? '' : workerStandby ? 'cursor-pointer hover:border-gray-600' : 'cursor-not-allowed opacity-60'
-        ]"
-        @click="setMode('manual')"
-      >
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex items-center space-x-3">
-            <div class="w-10 h-10 rounded-full bg-green-500 bg-opacity-20 flex items-center justify-center">
-              <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path>
-              </svg>
-            </div>
-            <div>
-              <h3 class="text-lg font-semibold text-white">Manual Mode</h3>
-              <p class="text-xs text-gray-500">For testing & validation</p>
-            </div>
-          </div>
-          <div 
-            class="w-4 h-4 rounded-full border-2"
-            :class="settings?.mode === 'manual' ? 'bg-green-500 border-green-500' : 'border-gray-600'"
-          ></div>
-        </div>
-        
-        <p class="text-sm text-gray-400 mb-4">
-          Run single scans to test and validate agent behavior. Review results before running analysis.
-        </p>
-        
-        <!-- Manual Mode Controls -->
-        <div v-if="settings?.mode === 'manual'" class="space-y-3 mt-4 pt-4 border-t border-gray-800">
-          <button 
-            @click.stop="runManualScan" 
-            class="w-full px-4 py-3 rounded bg-green-600 text-white hover:bg-green-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-            :disabled="actionLoading || !!currentTask"
-          >
-            <svg v-if="!actionLoading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <svg v-else class="animate-spin w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <span>{{ actionLoading ? 'Running Scan...' : 'Run Single Scan' }}</span>
-          </button>
-          
-          <p v-if="currentTask" class="text-xs text-yellow-500 text-center">
-            Please wait for current task to complete
-          </p>
-          
-          <!-- Manual Scan History -->
-          <div class="mt-4 pt-4 border-t border-gray-800">
-            <h4 class="text-sm font-medium text-gray-400 mb-3">Recent Manual Scans</h4>
-            <div class="max-h-48 overflow-y-auto space-y-2">
-              <div v-if="manualBatches.length === 0" class="text-gray-500 text-xs text-center py-2">
-                No manual scans yet
-              </div>
-              <div 
-                v-for="batch in manualBatches.slice(0, 5)" 
-                :key="batch.scan_id"
-                class="flex justify-between items-center p-2 rounded bg-[#0D1117] hover:bg-gray-800 transition-colors cursor-pointer"
-                @click.stop="viewScanBatch(batch.scan_id)"
-              >
-                <div class="flex items-center space-x-2">
-                  <div 
-                    class="w-2 h-2 rounded-full"
-                    :class="getStatusDot(batch.analysis_status)"
-                  ></div>
-                  <span class="text-xs text-gray-300">{{ formatDateTime(batch.started_at) }}</span>
-                </div>
-                <div class="flex items-center space-x-2 text-xs">
-                  <span class="text-gray-400">{{ batch.new_listings_added }} new</span>
-                  <svg class="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Auto Mode Card -->
+
+      <!-- Auto Mode Card (first — primary mode) -->
       <div
         class="bg-[#121212] rounded-lg p-6 border-2 transition-all"
         :class="[
@@ -198,26 +114,26 @@
               <p class="text-xs text-gray-500">Scheduled scanning</p>
             </div>
           </div>
-          <div 
+          <div
             class="w-4 h-4 rounded-full border-2"
             :class="settings?.mode === 'auto' ? 'bg-blue-500 border-blue-500' : 'border-gray-600'"
           ></div>
         </div>
-        
+
         <p class="text-sm text-gray-400 mb-4">
           Automatically scan marketplace at regular intervals. Ideal for production monitoring.
         </p>
-        
+
         <!-- Auto Mode Controls -->
         <div v-if="settings?.mode === 'auto'" class="space-y-4 mt-4 pt-4 border-t border-gray-800" @click.stop>
           <!-- Interval Setting -->
           <div>
             <label class="block text-sm text-gray-400 mb-2">Scan Interval</label>
             <div class="flex items-center space-x-3">
-              <input 
+              <input
                 v-model.number="intervalMinutes"
-                type="number" 
-                min="5" 
+                type="number"
+                min="5"
                 max="120"
                 class="flex-1 px-3 py-2 bg-[#1C1C1E] border border-gray-700 rounded text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                 :disabled="settings?.auto_enabled"
@@ -225,7 +141,82 @@
               <span class="text-gray-500 text-sm">minutes</span>
             </div>
           </div>
-          
+
+          <!-- Schedule Window -->
+          <div class="pt-3 border-t border-gray-800/50" @click.stop>
+            <div class="flex items-center justify-between mb-2">
+              <div>
+                <p class="text-sm font-medium text-gray-300">Schedule Window</p>
+                <p class="text-xs text-gray-600 mt-0.5">Restrict auto scans to specific hours (MST)</p>
+              </div>
+              <!-- Toggle: editable by owenlheron, read-only badge for others -->
+              <button
+                v-if="isScheduleAdmin"
+                @click.stop="scheduleEnabled = !scheduleEnabled"
+                class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors flex-shrink-0"
+                :class="scheduleEnabled ? 'bg-blue-600' : 'bg-gray-700'"
+              >
+                <span
+                  class="inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform"
+                  :class="scheduleEnabled ? 'translate-x-[18px]' : 'translate-x-[2px]'"
+                />
+              </button>
+              <span
+                v-else
+                class="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                :class="scheduleEnabled ? 'bg-blue-900/40 text-blue-400' : 'bg-gray-800 text-gray-500'"
+              >
+                {{ scheduleEnabled ? 'On' : 'Off' }}
+              </span>
+            </div>
+
+            <!-- Time inputs (always shown so non-admins can see the config) -->
+            <div class="flex items-end gap-2 mt-3">
+              <div class="flex-1">
+                <label class="text-xs text-gray-500 block mb-1">From</label>
+                <input
+                  type="time"
+                  v-model="scheduleStart"
+                  :disabled="!isScheduleAdmin"
+                  class="w-full px-2 py-1.5 bg-[#1C1C1E] border border-gray-700 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+              </div>
+              <span class="text-gray-500 text-sm pb-2">→</span>
+              <div class="flex-1">
+                <label class="text-xs text-gray-500 block mb-1">To</label>
+                <input
+                  type="time"
+                  v-model="scheduleEnd"
+                  :disabled="!isScheduleAdmin"
+                  class="w-full px-2 py-1.5 bg-[#1C1C1E] border border-gray-700 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+              </div>
+              <span class="text-xs text-gray-600 pb-2 flex-shrink-0">MST</span>
+            </div>
+            <p class="text-[11px] text-gray-700 mt-1">Crosses midnight (e.g. 11:00 PM → 6:30 AM)</p>
+
+            <!-- Current window status -->
+            <div v-if="scheduleEnabled" class="flex items-center gap-1.5 mt-2 text-xs">
+              <div
+                class="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                :class="settings?.schedule_active !== false ? 'bg-emerald-500' : 'bg-yellow-500'"
+              ></div>
+              <span :class="settings?.schedule_active !== false ? 'text-emerald-500' : 'text-yellow-500'">
+                {{ settings?.schedule_active !== false ? 'Window active — scans running' : 'Outside window — scans paused' }}
+              </span>
+            </div>
+
+            <!-- Save button (admin only) -->
+            <button
+              v-if="isScheduleAdmin"
+              @click.stop="saveSchedule"
+              :disabled="scheduleSaving"
+              class="mt-3 w-full px-3 py-1.5 text-xs rounded bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 transition-colors disabled:opacity-50"
+            >
+              {{ scheduleSaving ? 'Saving…' : 'Save Schedule' }}
+            </button>
+          </div>
+
           <!-- Status Display -->
           <div v-if="settings?.auto_enabled" class="bg-[#0D1117] rounded p-4 space-y-2">
             <div class="flex justify-between text-sm">
@@ -241,7 +232,7 @@
               <span class="text-blue-400">{{ formatCountdown(settings.time_until_next_scan) }}</span>
             </div>
           </div>
-          
+
           <!-- Toggle Button -->
           <button
             v-if="!settings?.auto_enabled"
@@ -256,10 +247,10 @@
             </svg>
             <span>Start Auto Scanning</span>
           </button>
-          
-          <button 
+
+          <button
             v-else
-            @click.stop="disableAuto" 
+            @click.stop="disableAuto"
             class="w-full px-4 py-3 rounded bg-red-600 text-white hover:bg-red-700 transition-colors duration-200 disabled:opacity-50 flex items-center justify-center space-x-2"
             :disabled="actionLoading"
           >
@@ -269,7 +260,7 @@
             </svg>
             <span>Stop Auto Scanning</span>
           </button>
-          
+
           <!-- Auto Scan History -->
           <div class="mt-4 pt-4 border-t border-gray-800">
             <h4 class="text-sm font-medium text-gray-400 mb-3">Recent Auto Scans</h4>
@@ -277,14 +268,99 @@
               <div v-if="autoBatches.length === 0" class="text-gray-500 text-xs text-center py-2">
                 No automatic scans yet
               </div>
-              <div 
-                v-for="batch in autoBatches.slice(0, 5)" 
+              <div
+                v-for="batch in autoBatches.slice(0, 5)"
                 :key="batch.scan_id"
                 class="flex justify-between items-center p-2 rounded bg-[#0D1117] hover:bg-gray-800 transition-colors cursor-pointer"
                 @click.stop="viewScanBatch(batch.scan_id)"
               >
                 <div class="flex items-center space-x-2">
-                  <div 
+                  <div
+                    class="w-2 h-2 rounded-full"
+                    :class="getStatusDot(batch.analysis_status)"
+                  ></div>
+                  <span class="text-xs text-gray-300">{{ formatDateTime(batch.started_at) }}</span>
+                </div>
+                <div class="flex items-center space-x-2 text-xs">
+                  <span class="text-gray-400">{{ batch.new_listings_added }} new</span>
+                  <svg class="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Manual Mode Card (second — testing/validation) -->
+      <div
+        class="bg-[#121212] rounded-lg p-6 border-2 transition-all"
+        :class="[
+          settings?.mode === 'manual' ? 'border-green-500' : 'border-gray-800',
+          settings?.mode === 'manual' ? '' : workerStandby ? 'cursor-pointer hover:border-gray-600' : 'cursor-not-allowed opacity-60'
+        ]"
+        @click="setMode('manual')"
+      >
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-full bg-green-500 bg-opacity-20 flex items-center justify-center">
+              <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold text-white">Manual Mode</h3>
+              <p class="text-xs text-gray-500">For testing & validation</p>
+            </div>
+          </div>
+          <div
+            class="w-4 h-4 rounded-full border-2"
+            :class="settings?.mode === 'manual' ? 'bg-green-500 border-green-500' : 'border-gray-600'"
+          ></div>
+        </div>
+
+        <p class="text-sm text-gray-400 mb-4">
+          Run single scans to test and validate agent behavior. Review results before running analysis.
+        </p>
+
+        <!-- Manual Mode Controls -->
+        <div v-if="settings?.mode === 'manual'" class="space-y-3 mt-4 pt-4 border-t border-gray-800">
+          <button
+            @click.stop="runManualScan"
+            class="w-full px-4 py-3 rounded bg-green-600 text-white hover:bg-green-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+            :disabled="actionLoading || !!currentTask"
+          >
+            <svg v-if="!actionLoading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <svg v-else class="animate-spin w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>{{ actionLoading ? 'Running Scan...' : 'Run Single Scan' }}</span>
+          </button>
+
+          <p v-if="currentTask" class="text-xs text-yellow-500 text-center">
+            Please wait for current task to complete
+          </p>
+
+          <!-- Manual Scan History -->
+          <div class="mt-4 pt-4 border-t border-gray-800">
+            <h4 class="text-sm font-medium text-gray-400 mb-3">Recent Manual Scans</h4>
+            <div class="max-h-48 overflow-y-auto space-y-2">
+              <div v-if="manualBatches.length === 0" class="text-gray-500 text-xs text-center py-2">
+                No manual scans yet
+              </div>
+              <div
+                v-for="batch in manualBatches.slice(0, 5)"
+                :key="batch.scan_id"
+                class="flex justify-between items-center p-2 rounded bg-[#0D1117] hover:bg-gray-800 transition-colors cursor-pointer"
+                @click.stop="viewScanBatch(batch.scan_id)"
+              >
+                <div class="flex items-center space-x-2">
+                  <div
                     class="w-2 h-2 rounded-full"
                     :class="getStatusDot(batch.analysis_status)"
                   ></div>
@@ -319,6 +395,8 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 
 import { useRouter } from 'vue-router';
+import { useAuth } from '@/composables/useAuth';
+import { formatDateTimeMST } from '@/utils/datetime';
 import {
   getScannerSettings,
   getScannerStatus,
@@ -327,11 +405,14 @@ import {
   disableAutoScan,
   runManualScan as runManualScanApi,
   clearStuckTasks as clearStuckTasksApi,
+  updateScannerSettings,
   type ScannerSettings
 } from '@/services/api';
 import { useTaskStatus } from '@/composables/useTaskStatus';
 
 const router = useRouter();
+const { username } = useAuth();
+const isScheduleAdmin = computed(() => username.value === 'owenlheron');
 
 // Use centralized task status
 const { currentTask, isRunning, notifyTaskStarted, refresh: refreshTaskStatus, initialize: initTaskStatus } = useTaskStatus();
@@ -381,6 +462,20 @@ let settingsInterval: number | null = null;
 // Computed filtered batches by scan type
 const manualBatches = computed(() => [] as any[]);
 const autoBatches = computed(() => [] as any[]);
+
+// Schedule window state
+const scheduleEnabled = ref(false);
+const scheduleStart = ref('23:00');
+const scheduleEnd = ref('06:30');
+const scheduleSaving = ref(false);
+
+// Sync schedule fields from settings
+watch(settings, (s) => {
+  if (!s) return;
+  scheduleEnabled.value = s.schedule_enabled ?? false;
+  scheduleStart.value = (s.schedule_start ?? '23:00:00').slice(0, 5);
+  scheduleEnd.value = (s.schedule_end ?? '06:30:00').slice(0, 5);
+}, { immediate: true });
 
 // Methods
 const clearMessages = () => {
@@ -514,9 +609,27 @@ const viewScanBatch = (scanId: string) => {
   router.push({ name: 'scan-batch', params: { scanId } });
 };
 
+const saveSchedule = async () => {
+  scheduleSaving.value = true;
+  clearMessages();
+  try {
+    const result = await updateScannerSettings({
+      schedule_enabled: scheduleEnabled.value,
+      schedule_start: scheduleStart.value,
+      schedule_end: scheduleEnd.value,
+    });
+    settings.value = result;
+    showSuccess('Schedule saved');
+  } catch (err: any) {
+    showError(err.response?.data?.error || err.message || 'Failed to save schedule');
+  } finally {
+    scheduleSaving.value = false;
+  }
+};
+
 const formatDateTime = (isoString: string): string => {
   try {
-    return new Date(isoString).toLocaleString();
+    return formatDateTimeMST(isoString);
   } catch {
     return isoString;
   }

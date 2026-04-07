@@ -316,23 +316,26 @@ class ScannerSettingsSerializer(serializers.ModelSerializer):
     can_run_manual = serializers.SerializerMethodField()
     can_enable_auto = serializers.SerializerMethodField()
     time_until_next_scan = serializers.SerializerMethodField()
-    
+    schedule_active = serializers.SerializerMethodField()
+
     class Meta:
         model = ScannerSettings
         fields = [
             'id', 'mode', 'mode_display', 'auto_enabled', 'interval_minutes',
             'randomize_order', 'last_scan_at', 'next_scan_at', 'auto_process_pid',
-            'can_run_manual', 'can_enable_auto', 'time_until_next_scan'
+            'can_run_manual', 'can_enable_auto', 'time_until_next_scan',
+            'schedule_enabled', 'schedule_start', 'schedule_end', 'schedule_timezone',
+            'schedule_active',
         ]
-    
+
     def get_can_run_manual(self, obj):
         """Check if manual scan can be run (no task running and not in auto mode)."""
         return not SystemTask.is_busy() and not obj.auto_enabled
-    
+
     def get_can_enable_auto(self, obj):
         """Check if auto mode can be enabled (no task currently running)."""
         return not SystemTask.is_busy()
-    
+
     def get_time_until_next_scan(self, obj):
         """Get seconds until next auto scan."""
         if not obj.auto_enabled or not obj.next_scan_at:
@@ -340,3 +343,20 @@ class ScannerSettingsSerializer(serializers.ModelSerializer):
         from django.utils import timezone
         delta = obj.next_scan_at - timezone.now()
         return max(0, int(delta.total_seconds()))
+
+    def get_schedule_active(self, obj):
+        """Whether the current time falls inside the schedule window."""
+        if not obj.schedule_enabled:
+            return True
+        try:
+            import pytz
+            from datetime import datetime
+            tz = pytz.timezone(obj.schedule_timezone)
+            now_local = datetime.now(tz).time()
+            start = obj.schedule_start
+            end = obj.schedule_end
+            if start > end:  # overnight window (e.g. 23:00 → 06:30)
+                return now_local >= start or now_local <= end
+            return start <= now_local <= end
+        except Exception:
+            return True

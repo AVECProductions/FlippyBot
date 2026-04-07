@@ -1,6 +1,6 @@
 # FLIPPY — Production Readiness Gameplan
 
-_Last updated: 2026-04-06 (session 4)_
+_Last updated: 2026-04-06 (session 6)_
 
 ## Goal
 
@@ -27,6 +27,7 @@ Both frontend and backend are on Railway (one project, two services) — no Netl
 - **No separate worker API** — the frontend talks only to the Railway backend; the worker communicates solely through the shared DB
 - **Railway for frontend** — static service using `npx serve -s dist -p $PORT`; SPA routing handled by `serve`'s `-s` flag. Custom domain `flippybot.app` via Railway DNS. No Netlify.
 - **AI split**: Worker handles all automated/batch Gemini calls (triage, deep analysis). Backend handles all interactive/real-time Gemini calls (chat with listing, on-demand features).
+- **Backend is a pure API layer**: No Playwright, no scanning, no two-pass analysis on Railway. All scraping lives in `worker/`. Backend only reads/writes DB and serves HTTP. `analyze_listing_url` removed — will return as a worker-queue feature in Phase 8 (`ManualAnalysisRequest` model).
 
 ---
 
@@ -39,11 +40,12 @@ Both frontend and backend are on Railway (one project, two services) — no Netl
 | 2 — Database | ✅ Done | Railway Postgres + env config |
 | 3 — Auth | ✅ Done | Single-user login (shared password for friends) |
 | 4 — Worker | ✅ Done | Standalone worker service with 4-state heartbeat |
-| 4.5 — Monorepo | 🚧 In Progress | Consolidate backend + frontend + worker into one GitHub repo |
-| 5 — Deployment | 🔲 | Railway backend + Railway frontend (no Netlify) |
-| 6 — Domain | 🔲 | flippybot.app DNS + HTTPS |
-| 7 — Hardening | 🔲 | Settings, CORS, security headers |
+| 4.5 — Monorepo | ✅ Done | Consolidate backend + frontend + worker into one GitHub repo |
+| 5 — Deployment | ✅ Done | Railway backend + Railway frontend (no Netlify) |
+| 6 — Domain | ✅ Done | flippybot.app DNS + HTTPS (verifying propagation) |
+| 7 — Hardening | 🚧 In Progress | Rate limiting, Sentry, ENABLE_SCANNER cleanup |
 | 8 — Intelligence | 🔲 | Cost optimization + deal quality improvements |
+| 9 — Mobile UI/UX | 🚧 In Progress | Full mobile optimization pass across all views |
 
 ---
 
@@ -111,37 +113,22 @@ _Note: Multi-user scoping (per-user agents, listings, scanners) is deferred. Fri
 - `worker/` → no git, local only
 - `FLIPPY/` parent → no git
 
-### Step 1 — You: Create the new GitHub repo
-- Go to GitHub → New repository under `AVECProductions`
-- Name: `flippybot` (matches the domain) or keep `FLIPPY` (archive the old one)
-- Set to **private**, no README, no .gitignore (we'll add our own)
-
-### Step 2 — I: Set up root .gitignore and init git
-- Write a root `.gitignore` covering Python, Node, Django, Vite, and secrets
-- Remove nested `.git` folders from `backend/` and `frontend/` (history not preserved — clean break)
-- `git init` at `FLIPPY/` root, initial commit of everything, push to new repo
-
-### Step 3 — I: Update Railway backend service
-- Update source repo → new monorepo URL
-- Set `rootDirectory` → `backend/`
-- Add missing `GEMINI_API_KEY` env var
-- Trigger deploy, verify `/api/` responds
-
-### Step 4 — I: Add Railway frontend service
-- Add new service to the FLIPPY Railway project
-- Source: same monorepo, `rootDirectory` → `frontend/`
-- Build command: `npm install && npm run build`
-- Start command: `npx serve -s dist -p $PORT`
-- No env vars needed — `api.ts` auto-detects Railway hostname
-- Trigger deploy, verify app loads and login works
-
-### Step 5 — I: Update CORS
-- Update `CORS_ALLOWED_ORIGINS` on backend to include the new frontend Railway domain
+### Completed ✅
+- Created `AVECProductions/FlippyBot` (private) on GitHub
+- Root `.gitignore` written; nested `.git` dirs removed from `backend/` and `frontend/`
+- `git init` at `FLIPPY/` root → 213-file initial commit → pushed to `https://github.com/AVECProductions/FlippyBot.git`
+- Railway backend service updated: source → FlippyBot monorepo, `rootDirectory=/backend`, `GEMINI_API_KEY` added
+- Railway frontend service created: `rootDirectory=/frontend`, build `npm install && npm run build-only`, start `npx serve -s dist -p $PORT`
+- `frontend/railway.json` added to enforce build command (Railpack was ignoring CLI config)
+- `CORS_ALLOWED_ORIGINS` updated to include frontend domain
+- Both services deployed; login verified end-to-end ✅
 
 ### Notes
-- `worker/` is committed to the monorepo but never deployed to Railway — it's just tracked in git
-- Git history from both old repos is not preserved (clean break). Archive old repos on GitHub after confirming everything works.
-- Railway `railway.json` lives in `backend/` — Railway finds it automatically when `rootDirectory=backend/`
+- Frontend URL: `https://frontend-production-d867.up.railway.app`
+- Backend URL: `https://flippy-production-9afd.up.railway.app`
+- `worker/` is committed to the monorepo but never deployed to Railway — tracked in git only
+- Git history from both old repos not preserved (clean break)
+- Archive old `FLIPPY` and `FLIPPY_FRONTEND` repos on GitHub when ready
 
 ---
 
@@ -150,17 +137,16 @@ _Note: Multi-user scoping (per-user agents, listings, scanners) is deferred. Fri
 Both frontend and backend deploy as separate services in the same Railway project. No Netlify.
 
 ### 5a — Railway backend service
-- [ ] Confirm `backend/railway.json` start command: `python manage.py migrate && python manage.py collectstatic --noinput && gunicorn mysite.wsgi` ✅ already set
-- [ ] Set Railway env vars: `SECRET_KEY`, `DATABASE_URL`, `GEMINI_API_KEY`, `SENDGRID_API_KEY`, `OPENAI_API_KEY`, `DEBUG=False`, `ALLOWED_HOSTS=<railway-domain>`, `CORS_ALLOWED_ORIGINS=https://<frontend-railway-domain>`
-- [ ] `STATIC_ROOT` already set in `settings.py`; `collectstatic` already in start command ✅
-- [ ] Deploy and verify `https://<backend>.up.railway.app/api/` responds
+- [x] Confirm `backend/railway.json` start command: `python manage.py migrate && python manage.py collectstatic --noinput && gunicorn mysite.wsgi` ✅
+- [x] `GEMINI_API_KEY`, `SECRET_KEY`, `DATABASE_URL`, `SENDGRID_API_KEY`, `OPENAI_API_KEY`, `DEBUG=False` set ✅
+- [x] Deploy verified — `https://flippy-production-9afd.up.railway.app/api/` responds ✅
+- [ ] Tighten `ALLOWED_HOSTS` — currently includes wildcard; lock to Railway domain only
 
 ### 5b — Railway frontend service
-- [ ] Add a second service to the Railway project (root: `frontend/`)
-- [ ] Build command: `npm install && npm run build`
-- [ ] Start command: `npx serve -s dist -p $PORT`
-- [ ] No env vars needed — `api.ts` auto-detects non-local hostname → uses Railway backend URL ✅
-- [ ] Deploy and verify app loads and login works
+- [x] Frontend service added to Railway project (`rootDirectory=frontend/`) ✅
+- [x] Build command: `npm install && npm run build-only` (via `frontend/railway.json`) ✅
+- [x] Start command: `npx serve -s dist -p $PORT` ✅
+- [x] Deploy verified — `https://frontend-production-d867.up.railway.app` loads and login works ✅
 
 _Note: `frontend/public/_redirects` is for Netlify only and has no effect here. The `-s` flag on `serve` handles SPA routing instead._
 
@@ -257,18 +243,34 @@ As scans accumulate, store observed prices per category. Inject recent price obs
 
 ---
 
-## Active Todos (current phase: Phase 4.5 — Monorepo)
+---
 
-**You (needs GitHub access):**
-- [ ] Create new GitHub repo (`AVECProductions/flippybot` recommended) — private, empty, no template files
+## Phase 9 — Mobile UI/UX Optimization
 
-**Me (once repo exists):**
-- [ ] Write root `.gitignore`, remove nested `.git` dirs, init monorepo, push to new repo
-- [ ] Update Railway backend service: new repo source + `rootDirectory=backend/` + add `GEMINI_API_KEY`
-- [ ] Add Railway frontend service: same repo + `rootDirectory=frontend/` + build/start commands
-- [ ] Update `CORS_ALLOWED_ORIGINS` on backend to include new frontend Railway domain
-- [ ] Verify both services deploy and login works end-to-end
-- [ ] Archive old `FLIPPY` and `FLIPPY_FRONTEND` repos on GitHub
+_Start: 2026-04-06. Driven by real-world mobile usage feedback._
+
+**Goal:** Make every view comfortable on a phone. Primary issues observed:
+
+- [x] **Header**: Change from `sticky` to `fixed` so it never scrolls away; add `pt-16` offset to main content
+- [x] **Header — Flippy status bar**: Show a slim blue sub-bar below the nav when a scan is running (all screen sizes)
+- [x] **Agents page**: Agent card rows clumped on mobile — restructure to stack name/count vertically, increase tap target sizes
+- [x] **Agents page — query rows**: Actions hidden behind hover (`opacity-0`) which doesn't work on mobile; always visible on mobile (`md:opacity-0 md:group-hover:opacity-100`)
+- [x] **AI Analysis modal**: Footer buttons overflow horizontally on mobile — stack vertically on small screens; fix value assessment 3-col grid to single column on mobile; add `overflow-x-hidden` to BaseModal
+- [x] **Scan batch (history detail)**: Large metric cards dominate the view; replaced with compact inline stats row so listings are the primary focus
+- [x] **Scanner control**: Auto Mode moved before Manual Mode (auto is the primary use case)
+- [ ] **HistoryView**: Verify mobile layout is acceptable
+- [ ] **ListingsView / ListingCard**: Verify no overflow issues on mobile
+
+---
+
+## Active Todos (current phase: Phase 5/6 wrap-up)
+
+- [ ] Remove `ENABLE_SCANNER` from `backend/mysite/settings.py` and Railway env vars (WORKER_REFACTOR step 4)
+- [ ] Verify `https://flippybot.app` loads and login works (CNAME was still propagating last session)
+- [ ] Archive old `AVECProductions/FLIPPY` and `AVECProductions/FLIPPY_FRONTEND` GitHub repos
+- [ ] Phase 7 hardening: rate limiting on login endpoint (django-ratelimit or DRF throttling)
+- [ ] Phase 7 hardening: Sentry free tier error monitoring (`pip install sentry-sdk`, one line in settings)
+- [ ] Phase 8 — "Analyze Listing" URL feature: implement via worker queue (`ManualAnalysisRequest` model → worker polls → frontend polls for result)
 
 ---
 
@@ -276,6 +278,9 @@ As scans accumulate, store observed prices per category. Inject recent price obs
 
 ## Recently Completed
 
+- [x] Backend scanning cleanup (WORKER_REFACTOR steps 1–3): deleted 9 backend service files (flippy_scanner, llm_analysis, two_pass_analysis, scanner_execution, scanner_control, scan_history, agents/), removed 4 endpoints that called Playwright (run_detailed_analysis, run_deep_analysis, rerun_triage, analyze_listing_url), stripped requirements.txt of playwright/beautifulsoup4/geopy/twilio/psutil/openai/httpx/recipe-scrapers
+- [x] Phase 6 — Custom domain: `flippybot.app` added to Railway frontend, DNS (CNAME + TXT) configured on Namecheap, backend ALLOWED_HOSTS/CORS/CSRF updated
+- [x] Phase 4.5 — Monorepo: FlippyBot monorepo at `AVECProductions/FlippyBot`, both Railway services live, login verified end-to-end
 - [x] Phase 4 — Worker complete: `worker/main.py` with 4-state heartbeat (standby/waiting/scanning/offline), 10s ping, 30s staleness, startup `go_offline()` clearing stale sessions
 - [x] Phase 1 — Pre-deployment UI complete (HomeView, HistoryView, ScannerControlView, AppHeader, Router)
 - [x] Listings filters: agent dropdown + cascading scanner dropdown + Interesting Only + Notify Only

@@ -107,6 +107,44 @@ def go_offline():
         logger.warning(f"Could not mark worker offline: {e}")
 
 
+# ─── Schedule window ──────────────────────────────────────────────────────────
+
+def _is_within_schedule(db_settings) -> bool:
+    """Return True if the current local time is inside the configured scan window."""
+    if not db_settings.schedule_enabled:
+        return True
+    try:
+        import pytz
+        from datetime import datetime as dt
+        tz = pytz.timezone(db_settings.schedule_timezone)
+        now_local = dt.now(tz).time()
+        start = db_settings.schedule_start
+        end = db_settings.schedule_end
+        # Overnight window (e.g. 23:00 → 06:30 crosses midnight)
+        if start > end:
+            return now_local >= start or now_local <= end
+        return start <= now_local <= end
+    except Exception as e:
+        logger.warning(f"Schedule check failed: {e} — running scan anyway")
+        return True
+
+
+def _next_window_open(db_settings):
+    """Return the next UTC-aware datetime when the schedule window opens."""
+    import pytz
+    from datetime import datetime as dt, timedelta
+    tz = pytz.timezone(db_settings.schedule_timezone)
+    now_local = dt.now(tz)
+    start = db_settings.schedule_start
+
+    today_start = tz.localize(dt.combine(now_local.date(), start))
+    if now_local < today_start:
+        return today_start.astimezone(pytz.utc)
+    # Window already passed today — opens tomorrow
+    tomorrow_start = tz.localize(dt.combine(now_local.date() + timedelta(days=1), start))
+    return tomorrow_start.astimezone(pytz.utc)
+
+
 # ─── Scan execution ───────────────────────────────────────────────────────────
 
 def run_scan() -> dict:
@@ -184,6 +222,21 @@ def main_loop():
                 next_scan = db_settings.next_scan_at or timezone.now()
 
                 if timezone.now() >= next_scan:
+                    # Apply schedule window only for auto mode (not manual "Scan Now" triggers)
+                    if db_settings.mode == 'auto' and not _is_within_schedule(db_settings):
+                        next_window = _next_window_open(db_settings)
+                        db_settings.next_scan_at = next_window
+                        db_settings.save(update_fields=['next_scan_at'])
+                        _current_task = "waiting"
+                        import pytz
+                        tz = pytz.timezone(db_settings.schedule_timezone)
+                        window_local = next_window.astimezone(tz).strftime('%I:%M %p')
+                        logger.info(
+                            f"Outside schedule window — next scan at {window_local} MST"
+                        )
+                        if not _stop:
+                            time.sleep(5)
+                        continue
                     logger.info(
                         f"Scan triggered — auto_enabled=True, "
                         f"interval={db_settings.interval_minutes}m"

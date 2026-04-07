@@ -1,37 +1,33 @@
 <template>
-  <div class="flex items-center justify-between pl-4 pr-2 py-2.5 transition-colors hover:bg-white/[0.02] group">
+  <div class="flex items-start gap-2 pl-4 pr-2 py-3 transition-colors hover:bg-white/[0.02] group">
     <!-- Left: query info -->
-    <div class="flex items-center space-x-3 min-w-0 flex-1">
-      <!-- Status dot -->
-      <div 
-        :class="[
-          'w-1.5 h-1.5 rounded-full flex-shrink-0',
-          query.status === 'running' ? 'bg-emerald-400' : 'bg-gray-700'
-        ]"
-      />
-
-      <!-- Query text -->
-      <span class="text-sm text-gray-400 truncate">{{ query.query }}</span>
-
-      <!-- Category pill -->
-      <span 
-        v-if="query.category" 
-        class="text-[10px] text-gray-600 px-1.5 py-0.5 border border-gray-800 rounded flex-shrink-0"
-      >
-        {{ query.category }}
-      </span>
-
-      <!-- Locations -->
-      <span 
-        v-if="locationNames" 
-        class="text-[11px] text-gray-700 truncate flex-shrink-0 max-w-[200px]"
-      >
-        {{ locationNames }}
-      </span>
+    <div class="flex-1 min-w-0">
+      <!-- Row 1: status dot + query text -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <div
+          :class="[
+            'w-1.5 h-1.5 rounded-full flex-shrink-0 mt-0.5',
+            query.status === 'running' ? 'bg-emerald-400' : 'bg-gray-700'
+          ]"
+        />
+        <span class="text-sm text-gray-400 break-words">{{ query.query }}</span>
+      </div>
+      <!-- Row 2: category + locations -->
+      <div v-if="query.category || locationNames" class="flex items-center gap-2 flex-wrap mt-1 ml-3.5">
+        <span
+          v-if="query.category"
+          class="text-[10px] text-gray-600 px-1.5 py-0.5 border border-gray-800 rounded"
+        >
+          {{ query.category }}
+        </span>
+        <span v-if="locationNames" class="text-[11px] text-gray-700">
+          {{ locationNames }}
+        </span>
+      </div>
     </div>
 
-    <!-- Right: actions -->
-    <div class="flex items-center space-x-1 flex-shrink-0 ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
+    <!-- Right: actions — always visible on mobile, hover-reveal on desktop -->
+    <div class="flex items-center space-x-1 flex-shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
       <!-- Toggle status -->
       <button
         @click="$emit('toggle-status')"

@@ -1,5 +1,5 @@
 <template>
-  <nav class="sticky top-0 z-10 border-b border-gray-800 bg-black w-full">
+  <nav class="fixed top-0 left-0 right-0 z-50 border-b border-gray-800 bg-black w-full">
     <div class="w-full max-w-[95%] mx-auto px-4">
       <div class="flex items-center justify-between h-16">
         <!-- Logo -->
@@ -117,6 +117,16 @@
       </div>
     </div>
 
+    <!-- Flippy status sub-bar (all screens, only when active) -->
+    <div v-if="currentTask" class="border-t border-blue-500/20 bg-blue-500/5 px-4 py-1">
+      <div class="w-full max-w-[95%] mx-auto flex items-center gap-2 text-xs">
+        <div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse flex-shrink-0"></div>
+        <span class="text-blue-400 font-medium flex-shrink-0">{{ currentTask.step_display }}</span>
+        <span v-if="currentTask.progress_message" class="text-gray-500 truncate">{{ currentTask.progress_message }}</span>
+        <span class="text-gray-600 ml-auto flex-shrink-0">{{ currentTask.progress_percent }}%</span>
+      </div>
+    </div>
+
     <!-- Mobile menu -->
     <div class="md:hidden" :class="{'block': mobileMenuOpen, 'hidden': !mobileMenuOpen}">
       <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
@@ -171,9 +181,11 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 import TaskStatusIndicator from './TaskStatusIndicator.vue'
+import { useTaskStatus } from '@/composables/useTaskStatus'
 
 const route = useRoute()
 const { isAuthenticated, username, userInitial, logout } = useAuth()
+const { currentTask, initialize: initTaskStatus } = useTaskStatus()
 
 const mobileMenuOpen = ref(false)
 const isProfileOpen = ref(false)
@@ -200,8 +212,8 @@ const handleClickOutside = (event: MouseEvent) => {
 }
 
 onMounted(() => {
-  // Add event listener to close dropdown when clicking outside
   document.addEventListener('click', handleClickOutside)
+  initTaskStatus()
 })
 
 // Clean up event listeners when component is unmounted

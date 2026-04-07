@@ -41,7 +41,7 @@ onErrorCaptured((error, instance, info) => {
     <AppHeader />
 
     <!-- Main Content -->
-    <main class="flex-grow w-full">
+    <main class="flex-grow w-full pt-16">
       <div class="w-full max-w-[95%] mx-auto px-4 py-6">
         <RouterView />
       </div>
