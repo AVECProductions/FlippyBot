@@ -3,15 +3,6 @@
     <!-- Header -->
     <div class="flex flex-wrap justify-between items-start gap-3 mb-6">
       <div>
-        <button
-          @click="$router.go(-1)"
-          class="text-gray-400 hover:text-white mb-2 flex items-center text-sm"
-        >
-          <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-          </svg>
-          Back
-        </button>
         <h2 class="text-xl font-bold text-white">Scan Results</h2>
         <p class="text-gray-500 text-sm" v-if="scanBatch">
           {{ formatDateTime(scanBatch.started_at) }} · {{ scanBatch.scan_type === 'single' ? 'Manual' : 'Auto' }} scan
@@ -88,34 +79,6 @@
     <div v-if="loading && !scanBatch" class="text-center py-12">
       <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
       <p class="text-gray-400 mt-3">Loading scan results...</p>
-    </div>
-
-    <!-- Summary Stats (compact inline row) -->
-    <div v-if="scanBatch" class="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-4 text-sm">
-      <span class="text-gray-400">
-        <span class="font-semibold text-white">{{ scanBatch.new_listings_added }}</span>
-        <span class="text-gray-600 ml-1">new</span>
-      </span>
-      <span class="text-gray-700 hidden sm:inline">·</span>
-      <span class="text-gray-400">
-        <span class="font-semibold text-yellow-400">{{ totalCounts.interesting || 0 }}</span>
-        <span class="text-gray-600 ml-1">interesting</span>
-      </span>
-      <span class="text-gray-700 hidden sm:inline">·</span>
-      <span class="text-gray-400">
-        <span class="font-semibold text-gray-500">{{ totalCounts.skipped || 0 }}</span>
-        <span class="text-gray-600 ml-1">skipped</span>
-      </span>
-      <span class="text-gray-700 hidden sm:inline">·</span>
-      <span class="text-gray-400">
-        <span class="font-semibold text-green-400">{{ deepAnalyzedCount }}</span>
-        <span class="text-gray-600 ml-1">analyzed</span>
-      </span>
-      <span class="text-gray-700 hidden sm:inline">·</span>
-      <span class="text-gray-400">
-        <span class="font-semibold text-emerald-400">{{ notifyCount }}</span>
-        <span class="text-gray-600 ml-1">notify</span>
-      </span>
     </div>
 
     <!-- Filters -->
@@ -656,10 +619,9 @@ const notifyCount = computed(() =>
 
 const listingFilters = computed(() => [
   { key: 'all', label: 'All', count: totalCounts.value.all },
-  { key: 'interesting', label: '🟡 Pass 1: Interesting', count: totalCounts.value.interesting || 0, color: 'bg-yellow-600 text-white' },
-  { key: 'skipped', label: 'Pass 1: Skipped', count: totalCounts.value.skipped || 0 },
-  { key: 'analyzed', label: '✅ Pass 2: Analyzed', count: totalCounts.value.analyzed || 0, color: 'bg-green-600 text-white' },
-  { key: 'notify', label: 'NOTIFY', count: totalCounts.value.notify || 0, color: 'bg-emerald-600 text-white' },
+  { key: 'interesting', label: 'Interesting', count: totalCounts.value.interesting || 0, color: 'bg-yellow-600 text-white' },
+  { key: 'skipped', label: 'Skipped', count: totalCounts.value.skipped || 0 },
+  { key: 'notify', label: 'Notified', count: totalCounts.value.notify || 0, color: 'bg-emerald-600 text-white' },
 ]);
 
 // Methods

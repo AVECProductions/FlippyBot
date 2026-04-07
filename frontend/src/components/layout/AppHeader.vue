@@ -117,8 +117,8 @@
       </div>
     </div>
 
-    <!-- Flippy status sub-bar (all screens, only when active) -->
-    <div v-if="currentTask" class="border-t border-blue-500/20 bg-blue-500/5 px-4 py-1">
+    <!-- Flippy status sub-bar (mobile only — desktop has TaskStatusIndicator in nav) -->
+    <div v-if="currentTask" class="md:hidden border-t border-blue-500/20 bg-blue-500/5 px-4 py-1">
       <div class="w-full max-w-[95%] mx-auto flex items-center gap-2 text-xs">
         <div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse flex-shrink-0"></div>
         <span class="text-blue-400 font-medium flex-shrink-0">{{ currentTask.step_display }}</span>

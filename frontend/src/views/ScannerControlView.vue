@@ -12,33 +12,62 @@
       </button>
     </div>
 
-    <!-- Worker Status Bar -->
+    <!-- Combined Worker + Task Status Bar -->
     <div class="bg-[#121212] rounded-lg p-4 border border-gray-800 mb-6">
-      <div class="flex items-center justify-between flex-wrap gap-3">
-        <div class="flex items-center space-x-3">
-          <!-- Animated dot -->
-          <div class="relative flex items-center justify-center w-4 h-4">
+      <div class="flex flex-wrap items-start gap-x-4 gap-y-2">
+
+        <!-- Left: dot + worker label + task details -->
+        <div class="flex items-start gap-3 flex-1 min-w-0">
+          <!-- Animated dot (vertically centred with first line) -->
+          <div class="relative flex items-center justify-center w-4 h-4 mt-0.5 flex-shrink-0">
             <div class="w-3 h-3 rounded-full" :class="workerDotClass"></div>
             <div v-if="workerScanning" class="absolute w-3 h-3 rounded-full bg-blue-500 animate-ping opacity-60"></div>
             <div v-else-if="workerWaiting" class="absolute w-3 h-3 rounded-full bg-yellow-500 animate-ping opacity-60"></div>
           </div>
-          <span class="text-sm font-medium" :class="workerScanning ? 'text-blue-400' : workerOnline ? 'text-green-400' : 'text-red-400'">
-            {{ workerStatusLabel }}
-          </span>
-          <!-- Pending trigger message -->
-          <span v-if="pendingTrigger && !workerScanning" class="text-xs text-yellow-400 animate-pulse">
-            — waiting for Flippy to pick up...
-          </span>
+
+          <div class="min-w-0">
+            <!-- Row 1: worker status + task step -->
+            <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              <span class="text-sm font-medium flex-shrink-0"
+                :class="workerScanning ? 'text-blue-400' : workerOnline ? 'text-green-400' : 'text-red-400'">
+                {{ workerStatusLabel }}
+              </span>
+              <template v-if="currentTask">
+                <span class="text-gray-700 hidden sm:inline">·</span>
+                <span class="text-sm text-blue-300 flex-shrink-0">{{ currentTask.step_display }}</span>
+                <span v-if="currentTask.progress_message" class="text-xs text-gray-500 truncate">
+                  {{ currentTask.progress_message }}
+                </span>
+              </template>
+              <span v-if="pendingTrigger && !workerScanning" class="text-xs text-yellow-400 animate-pulse flex-shrink-0">
+                — waiting for Flippy to pick up...
+              </span>
+            </div>
+            <!-- Row 2: elapsed time (only when task is running) -->
+            <div v-if="currentTask" class="text-xs text-gray-500 mt-0.5">
+              Running for {{ formatElapsed(currentTask.elapsed_seconds) }}
+            </div>
+          </div>
         </div>
-        <div class="flex items-center space-x-4 text-xs text-gray-500">
+
+        <!-- Right: cancel button + scan timestamps -->
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 flex-shrink-0">
+          <button
+            v-if="currentTask && currentTask.elapsed_seconds > 60"
+            @click="clearStuckTask"
+            class="px-3 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded transition-colors flex-shrink-0"
+          >
+            {{ currentTask.elapsed_seconds > 300 ? 'Cancel Stuck Task' : 'Cancel Task' }}
+          </button>
           <span v-if="workerStatus?.last_scan_at">
             Last scan: {{ formatDateTime(workerStatus.last_scan_at) }}
           </span>
-          <span class="text-gray-700 text-[10px] uppercase tracking-wide">All times MST</span>
           <span v-if="workerStatus?.auto_enabled && timeUntilNextScan !== null && !workerScanning" class="text-blue-400">
-            Next scan in {{ formatCountdown(timeUntilNextScan) }}
+            Next in {{ formatCountdown(timeUntilNextScan) }}
           </span>
+          <span class="text-gray-700 text-[10px] uppercase tracking-wide hidden sm:inline">MST</span>
         </div>
+
       </div>
     </div>
 
@@ -49,45 +78,6 @@
 
     <div v-if="successMessage" class="bg-green-500 bg-opacity-10 text-green-500 p-4 rounded-md mb-4">
       {{ successMessage }}
-    </div>
-
-    <!-- Current Task Status (if running) -->
-    <div v-if="currentTask" class="bg-blue-500 bg-opacity-10 border border-blue-500 border-opacity-30 rounded-lg p-4 mb-6">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-4">
-          <div class="animate-spin">
-            <svg class="h-6 w-6 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-          </div>
-          <div>
-            <div class="font-semibold text-white">{{ currentTask.step_display }}</div>
-            <div class="text-sm text-gray-400">{{ currentTask.progress_message || 'Processing...' }}</div>
-            <div class="text-xs text-gray-500 mt-1">
-              Running for {{ formatElapsed(currentTask.elapsed_seconds) }}
-            </div>
-          </div>
-        </div>
-        <div class="flex items-center space-x-4">
-          <div class="w-32 h-2 bg-gray-700 rounded-full overflow-hidden">
-            <div 
-              class="h-full bg-blue-500 transition-all duration-300"
-              :style="{ width: `${currentTask.progress_percent}%` }"
-            ></div>
-          </div>
-          <span class="text-blue-400 font-medium">{{ currentTask.progress_percent }}%</span>
-          <!-- Clear stuck task button (shows if task running > 5 min) -->
-          <button
-            v-if="currentTask.elapsed_seconds > 60"
-            @click="clearStuckTask"
-            class="px-3 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
-            :title="currentTask.elapsed_seconds > 300 ? 'Task appears stuck. Click to cancel.' : 'Cancel running task'"
-          >
-            {{ currentTask.elapsed_seconds > 300 ? 'Cancel Stuck Task' : 'Cancel Task' }}
-          </button>
-        </div>
-      </div>
     </div>
 
     <!-- Mode Selection -->
@@ -193,7 +183,7 @@
               </div>
               <span class="text-xs text-gray-600 pb-2 flex-shrink-0">MST</span>
             </div>
-            <p class="text-[11px] text-gray-700 mt-1">Crosses midnight (e.g. 11:00 PM → 6:30 AM)</p>
+            <p class="text-[11px] text-gray-700 mt-1">Times in MST (America/Denver)</p>
 
             <!-- Current window status -->
             <div v-if="scheduleEnabled" class="flex items-center gap-1.5 mt-2 text-xs">

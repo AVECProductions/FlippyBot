@@ -92,14 +92,14 @@ onMounted(() => load(1))
         <div
           v-for="batch in batches"
           :key="batch.scan_id"
-          class="flex items-center justify-between p-4 hover:bg-gray-800 transition-colors cursor-pointer"
+          class="flex items-start justify-between p-4 hover:bg-gray-800 transition-colors cursor-pointer"
           @click="viewBatch(batch.scan_id)"
         >
           <!-- Left: status + time + type -->
-          <div class="flex items-center space-x-3 min-w-0">
-            <div class="w-2 h-2 rounded-full flex-shrink-0" :class="statusDot(batch.analysis_status)"></div>
-            <div class="min-w-0">
-              <div class="flex items-center space-x-2">
+          <div class="flex items-start space-x-3 min-w-0 flex-1">
+            <div class="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" :class="statusDot(batch.analysis_status)"></div>
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span class="text-sm text-gray-200">{{ formatDateTime(batch.started_at) }}</span>
                 <span
                   class="px-2 py-0.5 rounded text-xs flex-shrink-0"
@@ -113,12 +113,17 @@ onMounted(() => load(1))
               <div v-if="batch.scanner_name" class="text-xs text-gray-500 mt-0.5 truncate">
                 {{ batch.scanner_name }}
               </div>
+              <!-- Stats row (visible on mobile below the timestamp) -->
+              <div class="flex items-center gap-4 mt-1.5 sm:hidden text-xs text-gray-400">
+                <span><span class="text-green-400 font-medium">{{ batch.new_listings_added ?? '—' }}</span> new</span>
+                <span><span class="text-yellow-400 font-medium">{{ batch.investigation_marked ?? '—' }}</span> interesting</span>
+              </div>
             </div>
           </div>
 
-          <!-- Right: stats -->
-          <div class="flex items-center space-x-5 text-xs text-gray-400 flex-shrink-0 ml-4">
-            <div class="text-center hidden sm:block">
+          <!-- Right: stats (desktop only) -->
+          <div class="hidden sm:flex items-center space-x-5 text-xs text-gray-400 flex-shrink-0 ml-4">
+            <div class="text-center">
               <div class="text-white font-medium">{{ batch.total_listings_found ?? '—' }}</div>
               <div class="text-gray-500">found</div>
             </div>
@@ -130,10 +135,12 @@ onMounted(() => load(1))
               <div class="text-yellow-400 font-medium">{{ batch.investigation_marked ?? '—' }}</div>
               <div class="text-gray-500">interesting</div>
             </div>
-            <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
           </div>
+
+          <!-- Chevron -->
+          <svg class="w-4 h-4 text-gray-600 flex-shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
         </div>
       </div>
     </div>
