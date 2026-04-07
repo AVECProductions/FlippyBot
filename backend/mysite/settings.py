@@ -131,9 +131,6 @@ WSGI_APPLICATION = 'mysite.wsgi.application'
 # Database configuration - conditional based on environment
 USE_LOCAL_DB = config('USE_LOCAL_DB', default='False').lower() == 'true'
 
-# Scanner enabled on this machine (set True locally; leave unset/False on Railway)
-ENABLE_SCANNER = config('ENABLE_SCANNER', default='False').lower() == 'true'
-
 if USE_LOCAL_DB:
     # Local development - SQLite
     DATABASES = {
@@ -211,8 +208,6 @@ SENDGRID_API_KEY = config('SENDGRID_API_KEY', default=None)
 SENDGRID_FROM_EMAIL = config('SENDGRID_FROM_EMAIL', default=None)
 SENDGRID_TO_EMAIL = config('SENDGRID_TO_EMAIL', default=None)
 
-# For development only
-CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = [
     'DELETE',
@@ -235,21 +230,28 @@ CORS_ALLOW_HEADERS = [
     'x-webhook-signature',  # Add this for the webhook signature
 ]
 
-# For production, specify allowed origins:
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:5173",
-#     "https://your-production-domain.com",
-# ]
+# Production security settings
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 
 # Add these settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    # Comment out or modify this line to allow unauthenticated access by default
-    # 'DEFAULT_PERMISSION_CLASSES': (
-    #     'rest_framework.permissions.IsAuthenticated',
-    # ),
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/hour',
+        'user': '1000/hour',
+        'login': '10/min',  # Applied specifically to the login endpoint
+    },
 }
 
 from datetime import timedelta
@@ -267,4 +269,14 @@ SIMPLE_JWT = {
 ELEVENLABS_WEBHOOK_SECRET = '1234567890'  # Change this to a secure random string
 
 # Add this near your other settings
-OPENAI_API_KEY = config('OPENAI_API_KEY')
+OPENAI_API_KEY = config('OPENAI_API_KEY', default=None)
+
+# Sentry error monitoring (optional — only active when SENTRY_DSN is set)
+SENTRY_DSN = config('SENTRY_DSN', default=None)
+if SENTRY_DSN:
+    import sentry_sdk
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        traces_sample_rate=0.1,
+        environment='production' if not DEBUG else 'development',
+    )

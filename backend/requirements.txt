@@ -34,3 +34,6 @@ sendgrid>=6.10.0  # For email notifications
 
 # AI/LLM dependencies (agent builder runs on Railway)
 google-genai>=0.2.0  # Google Gemini API
+
+# Error monitoring (only active when SENTRY_DSN env var is set)
+sentry-sdk>=1.40.0
