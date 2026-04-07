@@ -1,0 +1,61 @@
+# ── Python ──────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.manifest
+*.spec
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env/
+ENV/
+
+# Django
+*.sqlite3
+*.db
+/backend/staticfiles/
+/backend/media/
+/backend/local_settings.py
+
+# ── Secrets ─────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Node / Frontend ─────────────────────────────────────
+node_modules/
+dist/
+.vite/
+*.local
+
+# ── OS ──────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Editors ─────────────────────────────────────────────
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Playwright ──────────────────────────────────────────
+/backend/playwright-browsers/
+/worker/playwright-browsers/
+
+# ── Misc ────────────────────────────────────────────────
+*.log
+*.tmp
+trash/
+mcp/
+.claude/
+.cursor/

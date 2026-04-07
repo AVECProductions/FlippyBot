@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 400" fill="none">
+  <rect width="500" height="400" rx="12" fill="#1C1C1E"/>
+  <path d="M150 150 L350 150 L350 350 L150 350 Z" fill="#3B82F6" opacity="0.1"/>
+  <path d="M170 170 L330 170 L330 330 L170 330 Z" stroke="#3B82F6" stroke-width="4" stroke-dasharray="10 5"/>
+  <circle cx="250" cy="150" r="50" fill="#3B82F6" opacity="0.2"/>
+  <circle cx="250" cy="150" r="30" fill="#3B82F6" opacity="0.4"/>
+  <path d="M235 145 L255 145 L265 155 L255 165 L235 165 L225 155 Z" fill="#3B82F6"/>
+  <circle cx="185" cy="230" r="20" fill="#3B82F6" opacity="0.3"/>
+  <circle cx="315" cy="230" r="20" fill="#3B82F6" opacity="0.3"/>
+  <path d="M215 250 L285 250 L275 290 L225 290 Z" fill="#3B82F6" opacity="0.5"/>
+  <path d="M225 290 L275 290 L270 320 L230 320 Z" fill="#3B82F6" opacity="0.7"/>
+  <text x="250" y="100" font-family="Arial" font-size="24" fill="white" text-anchor="middle">FlippyBot</text>
+  <text x="250" y="275" font-family="Arial" font-size="18" fill="white" text-anchor="middle">Find Deals</text>
+</svg> 
