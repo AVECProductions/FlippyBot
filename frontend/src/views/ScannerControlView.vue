@@ -465,16 +465,16 @@ const autoBatches = computed(() => [] as any[]);
 
 // Schedule window state
 const scheduleEnabled = ref(false);
-const scheduleStart = ref('23:00');
-const scheduleEnd = ref('06:30');
+const scheduleStart = ref('06:30');
+const scheduleEnd = ref('23:00');
 const scheduleSaving = ref(false);
 
 // Sync schedule fields from settings
 watch(settings, (s) => {
   if (!s) return;
   scheduleEnabled.value = s.schedule_enabled ?? false;
-  scheduleStart.value = (s.schedule_start ?? '23:00:00').slice(0, 5);
-  scheduleEnd.value = (s.schedule_end ?? '06:30:00').slice(0, 5);
+  scheduleStart.value = (s.schedule_start ?? '06:30:00').slice(0, 5);
+  scheduleEnd.value = (s.schedule_end ?? '23:00:00').slice(0, 5);
 }, { immediate: true });
 
 // Methods

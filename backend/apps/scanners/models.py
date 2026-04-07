@@ -439,8 +439,8 @@ class ScannerSettings(models.Model):
 
     # Schedule window — restrict auto scans to specific hours (MST)
     schedule_enabled = models.BooleanField(default=False, help_text="Only run scans within the configured time window")
-    schedule_start = models.TimeField(default='23:00:00', help_text="Window open time (America/Denver / MST)")
-    schedule_end = models.TimeField(default='06:30:00', help_text="Window close time (America/Denver / MST)")
+    schedule_start = models.TimeField(default='06:30:00', help_text="Window open time (America/Denver / MST)")
+    schedule_end = models.TimeField(default='23:00:00', help_text="Window close time (America/Denver / MST)")
     schedule_timezone = models.CharField(max_length=50, default='America/Denver', help_text="Timezone for schedule window")
 
     # User (for future multi-user support)

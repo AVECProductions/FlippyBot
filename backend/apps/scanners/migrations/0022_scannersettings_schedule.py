@@ -17,12 +17,12 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='scannersettings',
             name='schedule_start',
-            field=models.TimeField(default=datetime.time(23, 0), help_text='Window open time (America/Denver / MST)'),
+            field=models.TimeField(default=datetime.time(6, 30), help_text='Window open time (America/Denver / MST)'),
         ),
         migrations.AddField(
             model_name='scannersettings',
             name='schedule_end',
-            field=models.TimeField(default=datetime.time(6, 30), help_text='Window close time (America/Denver / MST)'),
+            field=models.TimeField(default=datetime.time(23, 0), help_text='Window close time (America/Denver / MST)'),
         ),
         migrations.AddField(
             model_name='scannersettings',
